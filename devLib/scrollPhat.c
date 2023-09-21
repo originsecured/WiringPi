@@ -89,7 +89,7 @@ void scrollPhatUpdate (void)
   unsigned char pixels [SP_WIDTH] ;
 
 #ifdef	DEBUG
-  printf ("+-----------+\n") ;
+  LOGV ("+-----------+\n") ;
   for (y = 0 ; y < SP_HEIGHT ; ++y)
   {
     putchar ('|') ;
@@ -98,10 +98,10 @@ void scrollPhatUpdate (void)
       pixel = frameBuffer [x + y * SP_WIDTH] ;
       putchar (pixel == 0 ? ' ' : '*') ;
     }
-    printf ("|\n") ;
+    LOGV ("|\n") ;
   }
-  printf ("+-----------+\n") ;
-#endif 
+  LOGV ("+-----------+\n") ;
+#endif
 
   for (x = 0 ; x < SP_WIDTH ; ++x)
   {

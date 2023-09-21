@@ -308,7 +308,7 @@ static pthread_mutex_t pinMutex ;
 
 // Debugging & Return codes
 
-int wiringPiDebug       = FALSE ;
+int wiringPiDebug       = TRUE ;
 int wiringPiReturnCodes = FALSE ;
 
 // Use /dev/gpiomem ?
@@ -668,8 +668,11 @@ int wiringPiFailure (int fatal, const char *message, ...)
     vsnprintf (buffer, 1023, message, argp) ;
   va_end (argp) ;
 
-  fprintf (stderr, "%s", buffer) ;
+  LOGE ( "%s", buffer) ;
+#ifndef ANDROID
   exit (EXIT_FAILURE) ;
+  return -1;
+#endif
 
   return 0 ;
 }
@@ -686,9 +689,11 @@ static void setupCheck (const char *fName)
 {
   if (!wiringPiSetuped)
   {
-    fprintf (stderr, "%s: You have not called one of the wiringPiSetup\n"
+    LOGE ("%s: You have not called one of the wiringPiSetup\n"
 	"  functions, so I'm aborting your program before it crashes anyway.\n", fName) ;
+#ifndef ANDROID
     exit (EXIT_FAILURE) ;
+#endif
   }
 }
 
@@ -703,8 +708,10 @@ static void usingGpioMemCheck (const char *what)
 {
   if (usingGpioMem)
   {
-    fprintf (stderr, "%s: Unable to do this when using /dev/gpiomem. Try sudo?\n", what) ;
+    LOGE ("%s: Unable to do this when using /dev/gpiomem. Try sudo?\n", what) ;
+#ifndef ANDROID
     exit (EXIT_FAILURE) ;
+#endif
   }
 }
 
@@ -737,11 +744,14 @@ static void usingGpioMemCheck (const char *what)
 
 static void piGpioLayoutOops (const char *why)
 {
-  fprintf (stderr, "Oops: Unable to determine board revision from /proc/cpuinfo\n") ;
-  fprintf (stderr, " -> %s\n", why) ;
-  fprintf (stderr, " ->  You'd best google the error to find out why.\n") ;
+  LOGE("Oops: Unable to determine board revision from /proc/cpuinfo\n") ;
+  LOGE(" -> %s\n", why) ;
+  LOGE(" ->  You'd best google the error to find out why.\n") ;
 //fprintf (stderr, " ->  http://www.raspberrypi.org/phpBB3/viewtopic.php?p=184410#p184410\n") ;
+//TODO throw exceptions instead of ignoring on android
+#ifndef ANDROID
   exit (EXIT_FAILURE) ;
+#endif
 }
 
 int piGpioLayout (void)
@@ -754,8 +764,10 @@ int piGpioLayout (void)
   if (gpioLayout != -1)	// No point checking twice
     return gpioLayout ;
 
-  if ((cpuFd = fopen ("/proc/cpuinfo", "r")) == NULL)
-    piGpioLayoutOops ("Unable to open /proc/cpuinfo") ;
+  if ((cpuFd = fopen ("/proc/cpuinfo", "r")) == NULL) {
+      piGpioLayoutOops("Unable to open /proc/cpuinfo");
+      return -1;
+  }
 
 // Start by looking for the Architecture to make sure we're really running
 //	on a Pi. I'm getting fed-up with people whinging at me because
@@ -765,11 +777,13 @@ int piGpioLayout (void)
     if (strncmp (line, "Hardware", 8) == 0)
       break ;
 
-  if (strncmp (line, "Hardware", 8) != 0)
-    piGpioLayoutOops ("No \"Hardware\" line") ;
+  if (strncmp (line, "Hardware", 8) != 0) {
+      piGpioLayoutOops("No \"Hardware\" line");
+      return -1;
+  }
 
   if (wiringPiDebug)
-    printf ("piGpioLayout: Hardware: %s\n", line) ;
+    LOGD ("piGpioLayout: Hardware: %s\n", line) ;
 
 // See if it's BCM2708 or BCM2709 or the new BCM2835.
 
@@ -782,13 +796,15 @@ int piGpioLayout (void)
 #ifdef	DONT_CARE_ANYMORE
   if (! (strstr (line, "BCM2708") || strstr (line, "BCM2709") || strstr (line, "BCM2835")))
   {
-    fprintf (stderr, "Unable to determine hardware version. I see: %s,\n", line) ;
-    fprintf (stderr, " - expecting BCM2708, BCM2709 or BCM2835.\n") ;
-    fprintf (stderr, "If this is a genuine Raspberry Pi then please report this\n") ;
-    fprintf (stderr, "at GitHub.com/wiringPi/wiringPi. If this is not a Raspberry Pi then you\n") ;
-    fprintf (stderr, "are on your own as wiringPi is designed to support the\n") ;
-    fprintf (stderr, "Raspberry Pi ONLY.\n") ;
+    LOGE("Unable to determine hardware version. I see: %s,\n", line) ;
+    LOGE(" - expecting BCM2708, BCM2709 or BCM2835.\n") ;
+    LOGE("If this is a genuine Raspberry Pi then please report this\n") ;
+    LOGE("at GitHub.com/wiringPi/wiringPi. If this is not a Raspberry Pi then you\n") ;
+    LOGE("are on your own as wiringPi is designed to support the\n") ;
+    LOGE("Raspberry Pi ONLY.\n") ;
+#ifndef ANDROID
     exit (EXIT_FAILURE) ;
+#endif
   }
 #endif
 
@@ -821,8 +837,10 @@ int piGpioLayout (void)
 
   fclose (cpuFd) ;
 
-  if (strncmp (line, "Revision", 8) != 0)
-    piGpioLayoutOops ("No \"Revision\" line") ;
+  if (strncmp (line, "Revision", 8) != 0) {
+      piGpioLayoutOops("No \"Revision\" line");
+      return -1;
+  }
 
 // Chomp trailing CR/NL
 
@@ -830,7 +848,7 @@ int piGpioLayout (void)
     *c = 0 ;
 
   if (wiringPiDebug)
-    printf ("piGpioLayout: Revision string: %s\n", line) ;
+    LOGD ("piGpioLayout: Revision string: %s\n", line) ;
 
 // Scan to the first character of the revision number
 
@@ -838,8 +856,10 @@ int piGpioLayout (void)
     if (*c == ':')
       break ;
 
-  if (*c != ':')
-    piGpioLayoutOops ("Bogus \"Revision\" line (no colon)") ;
+  if (*c != ':') {
+      piGpioLayoutOops("Bogus \"Revision\" line (no colon)");
+      return -1;
+  }
 
 // Chomp spaces
 
@@ -847,20 +867,24 @@ int piGpioLayout (void)
   while (isspace (*c))
     ++c ;
 
-  if (!isxdigit (*c))
-    piGpioLayoutOops ("Bogus \"Revision\" line (no hex digit at start of revision)") ;
+  if (!isxdigit (*c)) {
+      piGpioLayoutOops("Bogus \"Revision\" line (no hex digit at start of revision)");
+      return -1;
+  }
 
 // Make sure its long enough
 
-  if (strlen (c) < 4)
-    piGpioLayoutOops ("Bogus revision line (too small)") ;
+  if (strlen (c) < 4) {
+      piGpioLayoutOops("Bogus revision line (too small)");
+      return -1;
+  }
 
 // Isolate  last 4 characters: (in-case of overvolting or new encoding scheme)
 
   c = c + strlen (c) - 4 ;
 
   if (wiringPiDebug)
-    printf ("piGpioLayout: last4Chars are: \"%s\"\n", c) ;
+    LOGD ("piGpioLayout: last4Chars are: \"%s\"\n", c) ;
 
   if ( (strcmp (c, "0002") == 0) || (strcmp (c, "0003") == 0))
     gpioLayout = 1 ;
@@ -868,7 +892,7 @@ int piGpioLayout (void)
     gpioLayout = 2 ;	// Covers everything else from the B revision 2 to the B+, the Pi v2, v3, zero and CM's.
 
   if (wiringPiDebug)
-    printf ("piGpioLayoutOops: Returning revision: %d\n", gpioLayout) ;
+    LOGD ("piGpioLayoutOops: Returning revision: %d\n", gpioLayout) ;
 
   return gpioLayout ;
 }
@@ -953,7 +977,7 @@ int piBoardRev (void)
  *********************************************************************************
  */
 
-void piBoardId (int *model, int *rev, int *mem, int *maker, int *warranty)
+int piBoardId (int *model, int *rev, int *mem, int *maker, int *warranty)
 {
   FILE *cpuFd ;
   char line [120] ;
@@ -964,10 +988,13 @@ void piBoardId (int *model, int *rev, int *mem, int *maker, int *warranty)
 //	Will deal with the properly later on - for now, lets just get it going...
 //  unsigned int modelNum ;
 
-  (void)piGpioLayout () ;	// Call this first to make sure all's OK. Don't care about the result.
+  int layout = piGpioLayout () ;
+  if (layout == -1) return -1;
 
-  if ((cpuFd = fopen ("/proc/cpuinfo", "r")) == NULL)
-    piGpioLayoutOops ("Unable to open /proc/cpuinfo") ;
+  if ((cpuFd = fopen ("/proc/cpuinfo", "r")) == NULL) {
+    piGpioLayoutOops("Unable to open /proc/cpuinfo");
+    return -1;
+  }
 
   while (fgets (line, 120, cpuFd) != NULL)
     if (strncmp (line, "Revision", 8) == 0)
@@ -975,8 +1002,10 @@ void piBoardId (int *model, int *rev, int *mem, int *maker, int *warranty)
 
   fclose (cpuFd) ;
 
-  if (strncmp (line, "Revision", 8) != 0)
-    piGpioLayoutOops ("No \"Revision\" line") ;
+  if (strncmp (line, "Revision", 8) != 0) {
+    piGpioLayoutOops("No \"Revision\" line");
+    return -1;
+  }
 
 // Chomp trailing CR/NL
 
@@ -984,7 +1013,7 @@ void piBoardId (int *model, int *rev, int *mem, int *maker, int *warranty)
     *c = 0 ;
 
   if (wiringPiDebug)
-    printf ("piBoardId: Revision string: %s\n", line) ;
+    LOGD ("piBoardId: Revision string: %s\n", line) ;
 
 // Need to work out if it's using the new or old encoding scheme:
 
@@ -994,8 +1023,10 @@ void piBoardId (int *model, int *rev, int *mem, int *maker, int *warranty)
     if (*c == ':')
       break ;
 
-  if (*c != ':')
-    piGpioLayoutOops ("Bogus \"Revision\" line (no colon)") ;
+  if (*c != ':') {
+    piGpioLayoutOops("Bogus \"Revision\" line (no colon)");
+    return -1;
+  }
 
 // Chomp spaces
 
@@ -1003,8 +1034,10 @@ void piBoardId (int *model, int *rev, int *mem, int *maker, int *warranty)
   while (isspace (*c))
     ++c ;
 
-  if (!isxdigit (*c))
-    piGpioLayoutOops ("Bogus \"Revision\" line (no hex digit at start of revision)") ;
+  if (!isxdigit (*c)) {
+    piGpioLayoutOops("Bogus \"Revision\" line (no hex digit at start of revision)");
+    return -1;
+  }
 
   revision = (unsigned int)strtol (c, NULL, 16) ; // Hex number with no leading 0x
 
@@ -1013,7 +1046,7 @@ void piBoardId (int *model, int *rev, int *mem, int *maker, int *warranty)
   if ((revision &  (1 << 23)) != 0)	// New way
   {
     if (wiringPiDebug)
-      printf ("piBoardId: New Way: revision is: %08X\n", revision) ;
+      LOGD ("piBoardId: New Way: revision is: %08X\n", revision) ;
 
     bRev      = (revision & (0x0F <<  0)) >>  0 ;
     bType     = (revision & (0xFF <<  4)) >>  4 ;
@@ -1029,21 +1062,25 @@ void piBoardId (int *model, int *rev, int *mem, int *maker, int *warranty)
     *warranty = bWarranty ;
 
     if (wiringPiDebug)
-      printf ("piBoardId: rev: %d, type: %d, proc: %d, mfg: %d, mem: %d, warranty: %d\n",
+      LOGD ("piBoardId: rev: %d, type: %d, proc: %d, mfg: %d, mem: %d, warranty: %d\n",
 		bRev, bType, bProc, bMfg, bMem, bWarranty) ;
   }
   else					// Old way
   {
     if (wiringPiDebug)
-      printf ("piBoardId: Old Way: revision is: %s\n", c) ;
+      LOGD ("piBoardId: Old Way: revision is: %s\n", c) ;
 
-    if (!isdigit (*c))
-      piGpioLayoutOops ("Bogus \"Revision\" line (no digit at start of revision)") ;
+    if (!isdigit (*c)) {
+      piGpioLayoutOops("Bogus \"Revision\" line (no digit at start of revision)");
+      return -1;
+    }
 
 // Make sure its long enough
 
-    if (strlen (c) < 4)
-      piGpioLayoutOops ("Bogus \"Revision\" line (not long enough)") ;
+    if (strlen (c) < 4) {
+      piGpioLayoutOops("Bogus \"Revision\" line (not long enough)");
+      return -1;
+    }
 
 // If longer than 4, we'll assume it's been overvolted
 
@@ -1087,6 +1124,7 @@ void piBoardId (int *model, int *rev, int *mem, int *maker, int *warranty)
 
     else                              { *model = 0           ; *rev = 0              ; *mem =   0 ; *maker = 0 ;               }
   }
+  return 0;
 }
 
 
@@ -1137,8 +1175,8 @@ void setPadDrive (int group, int value)
 
     if (wiringPiDebug)
     {
-      printf ("setPadDrive: Group: %d, value: %d (%08X)\n", group, value, wrVal) ;
-      printf ("Read : %08X\n", *(pads + group + 11)) ;
+      LOGD ("setPadDrive: Group: %d, value: %d (%08X)\n", group, value, wrVal) ;
+      LOGD ("Read : %08X\n", *(pads + group + 11)) ;
     }
   }
 }
@@ -1229,7 +1267,7 @@ void pwmSetClock (int divisor)
   if ((wiringPiMode == WPI_MODE_PINS) || (wiringPiMode == WPI_MODE_PHYS) || (wiringPiMode == WPI_MODE_GPIO))
   {
     if (wiringPiDebug)
-      printf ("Setting to: %d. Current: 0x%08X\n", divisor, *(clk + PWMCLK_DIV)) ;
+      LOGD ("Setting to: %d. Current: 0x%08X\n", divisor, *(clk + PWMCLK_DIV)) ;
 
     pwm_control = *(pwm + PWM_CONTROL) ;		// preserve PWM_CONTROL
 
@@ -1256,7 +1294,7 @@ void pwmSetClock (int divisor)
     *(pwm + PWM_CONTROL) = pwm_control ;		// restore PWM_CONTROL
 
     if (wiringPiDebug)
-      printf ("Set     to: %d. Now    : 0x%08X\n", divisor, *(clk + PWMCLK_DIV)) ;
+      LOGD ("Set     to: %d. Now    : 0x%08X\n", divisor, *(clk + PWMCLK_DIV)) ;
   }
 }
 
@@ -2268,7 +2306,7 @@ int wiringPiSetup (void)
     wiringPiReturnCodes = TRUE ;
 
   if (wiringPiDebug)
-    printf ("wiringPi: wiringPiSetup called\n") ;
+    LOGD ("wiringPi: wiringPiSetup called\n") ;
 
 // Get the board ID information. We're not really using the information here,
 //	but it will give us information like the GPIO layout scheme (2 variants
@@ -2276,7 +2314,8 @@ int wiringPiSetup (void)
 //	and if we're running on a compute module, then wiringPi pin numbers
 //	don't really many anything, so force native BCM mode anyway.
 
-  piBoardId (&model, &rev, &mem, &maker, &overVolted) ;
+  int result = piBoardId (&model, &rev, &mem, &maker, &overVolted) ;
+  if (result == -1) return -1;
 
   if ((model == PI_MODEL_CM) ||
       (model == PI_MODEL_CM3) ||
@@ -2413,10 +2452,11 @@ int wiringPiSetup (void)
 
 int wiringPiSetupGpio (void)
 {
-  (void)wiringPiSetup () ;
+  int result = wiringPiSetup () ;
+  if (result != 0) return result;
 
   if (wiringPiDebug)
-    printf ("wiringPi: wiringPiSetupGpio called\n") ;
+    LOGD ("wiringPi: wiringPiSetupGpio called\n") ;
 
   wiringPiMode = WPI_MODE_GPIO ;
 
@@ -2438,7 +2478,7 @@ int wiringPiSetupPhys (void)
   (void)wiringPiSetup () ;
 
   if (wiringPiDebug)
-    printf ("wiringPi: wiringPiSetupPhys called\n") ;
+    LOGD ("wiringPi: wiringPiSetupPhys called\n") ;
 
   wiringPiMode = WPI_MODE_PHYS ;
 
@@ -2472,7 +2512,7 @@ int wiringPiSetupSys (void)
     wiringPiReturnCodes = TRUE ;
 
   if (wiringPiDebug)
-    printf ("wiringPi: wiringPiSetupSys called\n") ;
+    LOGD ("wiringPi: wiringPiSetupSys called\n") ;
 
   if (piGpioLayout () == 1)
   {

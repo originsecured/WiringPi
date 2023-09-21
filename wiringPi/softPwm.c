@@ -177,7 +177,15 @@ void softPwmStop (int pin)
   {
     if (range [pin] != 0)
     {
+#ifdef ANDROID
+      int status;
+      if ( (status = pthread_kill(pin, SIGUSR1)) != 0)
+      {
+        LOGE("Error cancelling thread %d", pin);
+      }
+#else
       pthread_cancel (threads [pin]) ;
+#endif
       pthread_join   (threads [pin], NULL) ;
       range [pin] = 0 ;
       digitalWrite (pin, LOW) ;

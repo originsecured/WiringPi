@@ -108,7 +108,7 @@ static void bmp180ReadTempPress (int fd)
   cTemp = (int)rint (((100.0 * fTemp) + 0.5) / 10.0) ;
 
 #ifdef	DEBUG
-  printf ("fTemp: %f, cTemp: %6d\n", fTemp, cTemp) ;
+  LOGV ("fTemp: %f, cTemp: %6d\n", fTemp, cTemp) ;
 #endif
 
 // Start a pressure snsor reading
@@ -133,7 +133,7 @@ static void bmp180ReadTempPress (int fd)
   cPress = (int)rint (((100.0 * fPress) + 0.5) / 10.0) ;
 
 #ifdef	DEBUG
-  printf ("fPress: %f, cPress: %6d\n", fPress, cPress) ;
+  LOGV ("fPress: %f, cPress: %6d\n", fPress, cPress) ;
 #endif
 }
 

@@ -23,6 +23,11 @@
 
 #ifndef	__WIRING_PI_H__
 #define	__WIRING_PI_H__
+#ifdef ANDROID
+#include <android/log.h>
+#else
+#include <stdio.h>
+#endif
 
 // C doesn't have true/false by default and I can never remember which
 //	way round they are, so ...
@@ -31,6 +36,26 @@
 #ifndef	TRUE
 #  define	TRUE	(1==1)
 #  define	FALSE	(!TRUE)
+#endif
+
+#ifdef ANDROID
+#define __bswap_16(x) __swap16(x)
+#define __bswap_32(x) __swap32(x)
+#endif
+
+#ifdef ANDROID
+#define LOG_TAG "com.app.thinkgreen"
+#define LOGV(...) __android_log_print(ANDROID_LOG_VERBOSE, LOG_TAG, __VA_ARGS__)
+#define LOGD(...) __android_log_print(ANDROID_LOG_DEBUG, LOG_TAG, __VA_ARGS__)
+#define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
+#define LOGW(...) __android_log_print(ANDROID_LOG_WARN, LOG_TAG, __VA_ARGS__)
+#define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
+#else
+#define LOGV(...) printf(__VA_ARGS__)
+#define LOGD(...) printf(__VA_ARGS__)
+#define LOGI(...) printf(__VA_ARGS__)
+#define LOGW(...) printf(__VA_ARGS__)
+#define LOGE(...) fprintf(stderr, __VA_ARGS__)
 #endif
 
 // GCC warning suppressor
@@ -226,7 +251,7 @@ extern int  wiringPiSetupPiFaceForGpioProg (void) ;	// Don't use this - for gpio
 
 extern          int  piGpioLayout        (void) ;
 extern          int  piBoardRev          (void) ;	// Deprecated
-extern          void piBoardId           (int *model, int *rev, int *mem, int *maker, int *overVolted) ;
+extern          int piBoardId            (int *model, int *rev, int *mem, int *maker, int *overVolted) ;
 extern          int  wpiPinToGpio        (int wpiPin) ;
 extern          int  physPinToGpio       (int physPin) ;
 extern          void setPadDrive         (int group, int value) ;

@@ -94,7 +94,7 @@ static void verbError (const char *message, ...)
   va_end (argp) ;
 
   if (verbose)
-    fprintf (stderr, "%s\n", errorMessage) ;
+    LOGE( "%s\n", errorMessage) ;
 }
 
 
@@ -465,7 +465,10 @@ static int doExtensionPcf8591 (char *progName, int pinBase, char *params)
 
 static int doExtensionPseudoPins (UNU char *progName, int pinBase, UNU char *params)
 {
+#ifndef ANDROID
+  // pseudo pins disabled on android
   pseudoPinsSetup (pinBase) ;
+#endif
 
   return TRUE ;
 }
@@ -923,6 +926,6 @@ int loadWPiExtension (char *progName, char *extensionData, int printErrors)
       return extensionFn->function (progName, pinBase, p) ;
   }
 
-  fprintf (stderr, "%s: extension %s not found", progName, extension) ;
+  LOGE("%s: extension %s not found", progName, extension) ;
   return FALSE ;
 }
