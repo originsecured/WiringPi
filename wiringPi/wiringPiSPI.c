@@ -46,8 +46,8 @@
 static const uint8_t     spiBPW   = 8 ;
 static const uint16_t    spiDelay = 0 ;
 
-static uint32_t    spiSpeeds [2] ;
-static int         spiFds [2] ;
+static uint32_t    spiSpeeds [3] ;
+static int         spiFds [3] ;
 
 
 /*
@@ -56,10 +56,16 @@ static int         spiFds [2] ;
  *********************************************************************************
  */
 
+int wiringPiSPIGetFdBus (int bus, int channel)
+{
+  return spiFds [(bus * 2) + channel & 1] ;
+}
+
 int wiringPiSPIGetFd (int channel)
 {
-  return spiFds [channel & 1] ;
+    return wiringPiSPIGetFdBus(0, 1);
 }
+
 
 
 /*
@@ -71,7 +77,7 @@ int wiringPiSPIGetFd (int channel)
  *********************************************************************************
  */
 
-int wiringPiSPIDataRW (int channel, unsigned char *data, int len)
+int wiringPiSPIDataRWBus (int bus, int channel, unsigned char *data, int len)
 {
   struct spi_ioc_transfer spi ;
 
@@ -86,12 +92,18 @@ int wiringPiSPIDataRW (int channel, unsigned char *data, int len)
   spi.rx_buf        = (unsigned long)data ;
   spi.len           = len ;
   spi.delay_usecs   = spiDelay ;
-  spi.speed_hz      = spiSpeeds [channel] ;
+  spi.speed_hz      = spiSpeeds [(bus*2) + channel] ;
   spi.bits_per_word = spiBPW ;
 
-  return ioctl (spiFds [channel], SPI_IOC_MESSAGE(1), &spi) ;
+//  LOGD("ioctl (spiFds [(%d*2) + %d], SPI_IOC_MESSAGE(1), %d)", bus, channel, spiSpeeds[(bus*2 + channel)]);
+  int test = ioctl (spiFds [(bus*2) + channel], SPI_IOC_MESSAGE(1), &spi);
+//  LOGD("value: %d", test);
+  return test ;
 }
 
+int wiringPiSPIDataRW (int channel, unsigned char *data, int len) {
+    return wiringPiSPIDataRWBus(0, channel, data, len);
+}
 
 /*
  * wiringPiSPISetupMode:
@@ -99,23 +111,24 @@ int wiringPiSPIDataRW (int channel, unsigned char *data, int len)
  *********************************************************************************
  */
 
-int wiringPiSPISetupMode (int channel, int speed, int mode)
+int wiringPiSPISetupMode (int bus, int channel, int speed, int mode)
 {
   int fd ;
   char spiDev [32] ;
 
   mode    &= 3 ;	// Mode is 0, 1, 2 or 3
+//  LOGD("bud: %d, channel: %d, speed: %d", bus, channel, speed);
 
 // Channel can be anything - lets hope for the best
 //  channel &= 1 ;	// Channel is 0 or 1
 
-  snprintf (spiDev, 31, "/dev/spidev0.%d", channel) ;
+  snprintf (spiDev, 31, "/dev/spidev%d.%d", bus, channel) ;
 
   if ((fd = open (spiDev, O_RDWR)) < 0)
-    return wiringPiFailure (WPI_ALMOST, "Unable to open SPI device: %s\n", strerror (errno)) ;
+    return wiringPiFailure (WPI_ALMOST, "Unable to crank SPI device (%s): %s\n", spiDev, strerror (errno)) ;
 
-  spiSpeeds [channel] = speed ;
-  spiFds    [channel] = fd ;
+  spiSpeeds [(bus*2) + channel] = speed ;
+  spiFds    [(bus*2) + channel] = fd ;
 
 // Set SPI parameters.
 
@@ -131,6 +144,16 @@ int wiringPiSPISetupMode (int channel, int speed, int mode)
   return fd ;
 }
 
+/*
+ * wiringPiSPISetup:
+ *	Open the SPI device, and set it up, etc. in the default MODE 0
+ *********************************************************************************
+ */
+
+int wiringPiSPISetupBus (int bus, int channel, int speed)
+{
+  return wiringPiSPISetupMode (bus, channel, speed, 0) ;
+}
 
 /*
  * wiringPiSPISetup:
@@ -140,5 +163,5 @@ int wiringPiSPISetupMode (int channel, int speed, int mode)
 
 int wiringPiSPISetup (int channel, int speed)
 {
-  return wiringPiSPISetupMode (channel, speed, 0) ;
+  return wiringPiSPISetupMode (0, channel, speed, 0) ;
 }

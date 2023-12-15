@@ -27,8 +27,11 @@ extern "C" {
 #endif
 
 int wiringPiSPIGetFd     (int channel) ;
+int wiringPiSPIGetFdBus     (int bus, int channel) ;
 int wiringPiSPIDataRW    (int channel, unsigned char *data, int len) ;
-int wiringPiSPISetupMode (int channel, int speed, int mode) ;
+int wiringPiSPIDataRWBus    (int bus, int channel, unsigned char *data, int len) ;
+int wiringPiSPISetupMode (int bus, int channel, int speed, int mode) ;
+int wiringPiSPISetupBus  (int bus, int channel, int speed) ;
 int wiringPiSPISetup     (int channel, int speed) ;
 
 #ifdef __cplusplus
